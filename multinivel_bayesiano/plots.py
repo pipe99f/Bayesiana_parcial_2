@@ -2,8 +2,9 @@ from pathlib import Path
 
 import typer
 from loguru import logger
-from multinivel_bayesiano.config import FIGURES_DIR, PROCESSED_DATA_DIR
 from tqdm import tqdm
+
+from multinivel_bayesiano.config import FIGURES_DIR, PROCESSED_DATA_DIR
 
 app = typer.Typer()
 
