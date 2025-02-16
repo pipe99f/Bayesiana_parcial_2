@@ -104,13 +104,14 @@ def MCMC1(B, nj, y, cod_depto, s2j):
         sigma2_n = nu_0 * sigma2_0 + upsilon * np.sum(sum_inv_varsigma2)
         sigma2 = 1 / np.random.gamma(
             nu_n / 2,
-            sigma2_n / 2,
+            2 / sigma2_n,  # scale
         )
 
         # Muestreo de varsigma^2_{i,j}
         extended_theta = np.repeat(theta, nj)
         varsigma2 = 1 / np.random.gamma(
-            (upsilon + 1) / 2, ((y - extended_theta) ** 2 + upsilon * sigma2) / 2
+            (upsilon + 1) / 2,
+            2 / ((y - extended_theta) ** 2 + upsilon * sigma2),  # scale
         )
 
         # Muestreo de mu
@@ -120,8 +121,11 @@ def MCMC1(B, nj, y, cod_depto, s2j):
 
         # Muestreo de tau^2
         eta_n = eta_0 + m
-        tau2_n = (eta_0 * tau2_0 + np.sum((theta - mu) ** 2)) / 2
-        tau2 = 1 / np.random.gamma(eta_n / 2, tau2_n)
+        tau2_n = eta_0 * tau2_0 + np.sum((theta - mu) ** 2)
+        tau2 = 1 / np.random.gamma(
+            eta_n / 2,
+            2 / tau2_n,  # scale
+        )
 
         # Guardar muestras
         if (b % 10) == 0:
@@ -140,13 +144,24 @@ def MCMC1(B, nj, y, cod_depto, s2j):
     return {"muestras": muestras, "LL": LL}
 
 
-muestras_mcmc1 = MCMC1(B=10000, nj=nj, y=y, cod_depto=cod_depto, s2j=s2j)
+np.random.seed(123)
+muestras_mcmc1 = MCMC1(B=110000, nj=nj, y=y, cod_depto=cod_depto, s2j=s2j)
 
+# Data frame de theta
+mcmc1_theta = pd.DataFrame(muestras_mcmc1["muestras"]["theta"])
+mcmc1_theta = mcmc1_theta[1000:]
+mcmc1_theta.to_csv(PROCESSED_DATA_DIR / "mcmc1_theta.csv")
 
-muestras_mcmc1["muestras"]["theta"]
-muestras_mcmc1["muestras"]["sigma2"]
-muestras_mcmc1["muestras"]["mu"]
-muestras_mcmc1["muestras"]["tau2"]
+# Data frame con el resto de parámetros
+mcmc1_df = pd.DataFrame(muestras_mcmc1["muestras"])
+mcmc1_df = mcmc1_df.drop(columns=["theta"])
+mcmc1_df = mcmc1_df[1000:]
+mcmc1_df.to_csv(PROCESSED_DATA_DIR / "mcmc1_df.csv")
+
+# log-verosimilitud
+mcmc1_ll = pd.DataFrame(muestras_mcmc1["LL"])
+mcmc1_ll = mcmc1_ll[1000:]
+mcmc1_ll.to_csv(PROCESSED_DATA_DIR / "mcmc1_ll.csv")
 
 
 # %% MCMC2
