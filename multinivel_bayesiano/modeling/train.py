@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as st
 from tqdm import tqdm
+from scipy.special import gammaln
 
 from multinivel_bayesiano.config import PROCESSED_DATA_DIR
 
@@ -165,6 +166,62 @@ mcmc1_ll.to_csv(PROCESSED_DATA_DIR / "mcmc1_ll.csv")
 
 
 # %% MCMC2
+def MCMC2(B, y, cod_depto, nj, ybj, s2j, upsilon, mu_0, gamma2_0, eta_0, tau2_0, lambda_0, alpha_0, beta_0, sigma2_0):
+    n = np.sum(nj)
+    m = len(nj)
+    nu_0 = np.arange(1, 51, dtype=int)
+    sigma2_j = s2j
+    theta = ybj
+    mu = mu_0
+    sigma2 = sigma2_0
+    tau2 = tau2_0
+    nu = 1
+    varsigma2 = np.ones(n)
+    # indexar varsigma2 por departamento
+    unique_deptos = np.unique(cod_depto)
+    depto_to_index = {depto: i for i, depto in enumerate(unique_deptos)}
+    depto_indices = np.vectorize(depto_to_index.get)(cod_depto)
+
+    sum_inv_varsigma2 = np.zeros(32)
+    sum_yij_inv_varsigma2 = np.zeros(32)
+    THETA = np.zeros((B, 2 * m + 5))
+    for j in tqdm(range(B), desc="Procesando"):
+        np.add.at(sum_inv_varsigma2, depto_indices, 1.0 / varsigma2)
+
+        # groupby depto and sum y_ij/varsigma2
+        np.add.at(sum_yij_inv_varsigma2, depto_indices, y / varsigma2)
+
+        vtheta = 1 / (sum_inv_varsigma2 + 1 / tau2)
+        # Se actualiza theta
+        theta = np.random.normal((sum_yij_inv_varsigma2 + mu / tau2) * vtheta, np.sqrt(vtheta), m)
+        # Se actualiza varsigma
+        varsigma2_scale = 2 / ((y - np.repeat(theta, nj)) ** 2 + upsilon * np.repeat(sigma2_j, nj))
+        varsigma2 = 1 / np.random.gamma((upsilon + 1) * 0.5, varsigma2_scale)
+        # Se actualiza sigma2_j
+        vsigma2_j = upsilon * sum_inv_varsigma2
+        sigma2_j_scale = 2 / (nu * sigma2 + vsigma2_j)
+        sigma2_j = 1 / np.random.gamma((nu + upsilon * nj) * 0.5, sigma2_j_scale, m)
+        # Se actualiza tau^2
+        tau2_scale =  2 / (eta_0 * tau2_0 + m * (np.mean(theta) - mu)**2)
+        tau2 = 1 / np.random.gamma((eta_0 + m) * 0.5, tau2_scale)
+        # Se actualiza mu
+        vmu = 1 / (m / tau2 + 1 / gamma2_0)
+        mu = np.random.normal((m * np.mean(theta) / tau2 + mu_0 / gamma2_0) * vmu, np.sqrt(vmu))
+        # Se actualiza sigma_2
+        sigma2_scale = 2 / (beta_0 + nu * np.sum(1 / sigma2_j))
+        sigma2 = 1 / np.random.gamma((alpha_0 + nu * m) * 0.5, sigma2_scale)
+        # Se actualiza nu
+        vnu = (0.5*m*nu_0*np.log(0.5*nu_0*sigma2) - m*gammaln(0.5*nu_0) - 0.5*nu_0*np.sum(np.log(sigma2_j))
+               - nu_0*(lambda_0 + 0.5*sigma2*np.sum(1/sigma2_j)))
+        prob_nu = np.exp(vnu - np.max(vnu)) / np.sum(np.exp(vnu - np.max(vnu)))
+        nu = np.random.choice(nu_0, p=prob_nu)
+        # Log-verosimilitud
+        logver = np.sum(st.norm.logpdf(y, np.repeat(theta, nj), np.sqrt(np.repeat(sigma2_j, nj))))
+        THETA[j] = np.r_[theta, sigma2_j, sigma2, mu, tau2, nu, logver]
+
+    return THETA
+
+muestras_mcmc2 = MCMC2(1000, y, cod_depto, nj, ybj, s2j, upsilon, mu_0, gamma2_0, eta_0, tau2_0, lambda_0, alpha_0, beta_0, sigma2_0)
 
 # %% MCMC3
 
