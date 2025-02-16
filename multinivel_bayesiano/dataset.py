@@ -37,6 +37,33 @@ def main(
     pobreza_DPTO = pobreza_monetaria_2018.iloc[1:, 0].values.tolist()
 
     pobreza_monetaria = pd.DataFrame({"INCIDENCIA": pobreza_data, "DPTO": pobreza_DPTO})
+    cod_depto_map = {
+        "Antioquia": "05",
+        "Atlántico": "08",
+        "Bogotá D.C.": "11",
+        "Bolívar": "13",
+        "Boyacá": "15",
+        "Caldas": "17",
+        "Caquetá": "18",
+        "Cauca": "19",
+        "Cesar": "20",
+        "Chocó": "27",
+        "Córdoba": "23",
+        "Cundinamarca": "25",
+        "Huila": "41",
+        "La Guajira": "44",
+        "Magdalena": "47",
+        "Meta": "50",
+        "Nariño": "52",
+        "Norte de Santander": "54",
+        "Quindío": "63",
+        "Risaralda": "66",
+        "Santander": "68",
+        "Sucre": "70",
+        "Tolima": "73",
+        "Valle del Cauca": "76",
+    }
+    pobreza_monetaria["COD_DEPTO"] = pobreza_monetaria["DPTO"].map(cod_depto_map)
 
     cns = pd.read_csv(cns_input_path)
     cns = cns[["COBERTURA_NETA_SECUNDARIA", "CÓDIGO_MUNICIPIO", "MUNICIPIO"]]
